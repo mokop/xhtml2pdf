@@ -339,7 +339,8 @@ class pisaTagTD(pisaTag):
                 maxWidth=0,
                 maxHeight=0,
                 mode=mode,
-                content=cell)
+                content=cell,
+                fakeWidth=False)
 
         c.swapStory(self.story)
 
