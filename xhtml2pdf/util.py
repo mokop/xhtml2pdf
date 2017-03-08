@@ -569,7 +569,7 @@ class pisaFileObject:
                 self.mimetype = urlResponse.info().get(
                     "Content-Type", '').split(";")[0]
                 self.uri = urlResponse.geturl()
-                self.file = urlResponse
+                self.file = urlResponse.fp
 
             # Drive letters have len==1 but we are looking
             # for things like http:
@@ -617,7 +617,7 @@ class pisaFileObject:
                     self.mimetype = urlResponse.info().get(
                         "Content-Type", '').split(";")[0]
                     self.uri = urlResponse.geturl()
-                    self.file = urlResponse
+                    self.file = urlResponse.fp
 
             else:
 
