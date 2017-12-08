@@ -1,36 +1,36 @@
 # -*- coding: utf-8 -*-
-from reportlab.lib.colors import Color, toColor
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
-from reportlab.lib.units import inch, cm
 import base64
-try:
-    import httplib
-except ImportError:
-    import http.client as httplib
+from copy import copy
 import logging
 import mimetypes
 import os.path
 import re
-import reportlab
 import shutil
 import string
 import sys
 import tempfile
-import urllib
 
-if sys.version[0] == '2':
-    TextType = unicode
-else:
-    TextType = str
+import reportlab
+from reportlab.lib.colors import Color, toColor
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+from reportlab.lib.units import inch, cm
+import six
+
 
 try:
-    import urllib2
+    import httplib
 except ImportError:
+    import http.client as httplib
+
+try:
     import urllib.request as urllib2
-try:
-    import urlparse
 except ImportError:
+    import urllib2
+
+try:
     import urllib.parse as urlparse
+except ImportError:
+    import urlparse
 
 # Copyright 2010 Dirk Holtwick, holtwick.it
 #
@@ -46,37 +46,35 @@ except ImportError:
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rgb_re = re.compile("^.*?rgb[a]?[(]([0-9]+).*?([0-9]+).*?([0-9]+)(?:.*?(?:[01]\.(?:[0-9]+)))?[)].*?[ ]*$")
+rgb_re = re.compile(
+    "^.*?rgb[a]?[(]([0-9]+).*?([0-9]+).*?([0-9]+)(?:.*?(?:[01]\.(?:[0-9]+)))?[)].*?[ ]*$")
 
 _reportlab_version = tuple(map(int, reportlab.Version.split('.')))
 if _reportlab_version < (2, 1):
     raise ImportError("Reportlab Version 2.1+ is needed!")
 
-REPORTLAB22 = _reportlab_version >= (2, 2)
-# print "***", reportlab.Version, REPORTLAB22, reportlab.__file__
-
 log = logging.getLogger("xhtml2pdf")
-
-import io
 
 try:
     import PyPDF2
-except:
+except ImportError:
     PyPDF2 = None
 
 try:
     from reportlab.graphics import renderPM
-except:
+except ImportError:
     renderPM = None
 
 try:
     from reportlab.graphics import renderSVG
-except:
+except ImportError:
     renderSVG = None
 
 #=========================================================================
 # Memoize decorator
 #=========================================================================
+
+
 class memoized(object):
 
     """
@@ -100,10 +98,7 @@ class memoized(object):
     def __call__(self, *args, **kwargs):
         # Make sure the following line is not actually slower than what you're
         # trying to memoize
-        if sys.version[0] == '2':
-            args_plus = tuple(kwargs.iteritems())
-        else:
-            args_plus = tuple(iter(kwargs.items()))
+        args_plus = tuple(six.iteritems(kwargs))
         key = (args, args_plus)
         try:
             if key not in self.cache:
@@ -121,19 +116,69 @@ def ErrorMsg():
     """
     import traceback
 
-    type = value = tb = limit = None
-    type, value, tb = sys.exc_info()
-    list = traceback.format_tb(tb, limit) + \
-        traceback.format_exception_only(type, value)
+    limit = None
+    _type, value, tb = sys.exc_info()
+    _list = traceback.format_tb(tb, limit) + \
+        traceback.format_exception_only(_type, value)
     return "Traceback (innermost last):\n" + "%-20s %s" % (
-        string.join(list[: - 1], ""),
-        list[- 1])
+        " ".join(_list[:-1]),
+        _list[-1])
 
 
 def toList(value):
     if type(value) not in (list, tuple):
         return [value]
     return list(value)
+
+
+def transform_attrs(obj, keys, container, func, extras=None):
+    """
+    Allows to apply one function to set of keys cheching if key is in container,
+    also trasform ccs key to report lab keys.
+
+    extras = Are extra params for func, it will be call like func(*[param1, param2]) 
+
+    obj = frag
+    keys = [(reportlab, css), ... ]
+    container = cssAttr
+    """
+    cpextras = extras
+
+    for reportlab, css in keys:
+        extras = cpextras
+        if extras is None:
+            extras = []
+        elif not isinstance(extras, list):
+            extras = [extras]
+        if css in container:
+            extras.insert(0, container[css])
+            setattr(obj,
+                    reportlab,
+                    func(*extras)
+                    )
+
+
+def copy_attrs(obj1, obj2, attrs):
+    """
+    Allows copy a list of attributes from object2 to object1.
+    Useful for copy ccs attributes to fragment  
+    """
+    for attr in attrs:
+        value = getattr(obj2, attr) if hasattr(obj2, attr) else None
+        print(value)
+        if value is None and isinstance(obj2, dict) and attr in obj2:
+            value = obj2[attr]
+        setattr(obj1, attr, value)
+
+
+def set_value(obj, attrs, value, _copy=False):
+    """
+    Allows set the same value to a list of attributes 
+    """
+    for attr in attrs:
+        if _copy:
+            value = copy(value)
+        setattr(obj, attr, value)
 
 
 @memoized
@@ -165,7 +210,6 @@ def getColor(value, default=None):
 
 
 def getBorderStyle(value, default=None):
-    # log.debug(value)
     if value and (str(value).lower() not in ("none", "hidden")):
         return value
     return default
@@ -274,7 +318,7 @@ def getSize(value, relative=0, base=None, default=0.0):
                 return max(MIN_FONT_SIZE, relative * float(value))
         try:
             value = float(value)
-        except:
+        except ValueError:
             log.warn("getSize: Not a float %r", value)
             return default  # value = 0
         return max(0, value)
@@ -401,11 +445,11 @@ GAE = "google.appengine" in sys.modules
 
 if GAE:
     STRATEGIES = (
-        io.StringIO,
-        io.StringIO)
+        six.BytesIO,
+        six.BytesIO)
 else:
     STRATEGIES = (
-        io.StringIO,
+        six.BytesIO,
         tempfile.NamedTemporaryFile)
 
 
@@ -438,7 +482,7 @@ class pisaTempFile(object):
         self.strategy = int(len(buffer) > self.capacity)
         try:
             self._delegate = self.STRATEGIES[self.strategy]()
-        except:
+        except IndexError:
             # Fallback for Google AppEnginge etc.
             self._delegate = self.STRATEGIES[0]()
         self.write(buffer)
@@ -479,14 +523,18 @@ class pisaTempFile(object):
 
     def getvalue(self):
         """
-        Get value of file. Work around for second strategy
+        Get value of file. Work around for second strategy.
+        Always returns bytes
         """
 
         if self.strategy == 0:
             return self._delegate.getvalue()
         self._delegate.flush()
         self._delegate.seek(0)
-        return self._delegate.read()
+        value = self._delegate.read()
+        if not isinstance(value, six.binary_type):
+            value = value.encode('utf-8')
+        return value
 
     def write(self, value):
         """
@@ -504,13 +552,8 @@ class pisaTempFile(object):
             if needs_new_strategy:
                 self.makeTempFile()
 
-        if not isinstance(value, TextType) and not isinstance(self._delegate, tempfile._TemporaryFileWrapper):
-            # tempfile.NamedTemporaryFile needs bytes, I think we should change all this to io.BytesIO
-            try:
-                # reportlab encodes in latin1
-                value = value.decode("latin1")
-            except UnicodeDecodeError:
-                pass
+        if not isinstance(value, six.binary_type):
+            value = value.encode('utf-8')
 
         self._delegate.write(value)
 
@@ -551,7 +594,7 @@ class pisaFileObject:
         if uri.startswith("data:"):
             m = _rx_datauri.match(uri)
             self.mimetype = m.group("mime")
-            self.data = base64.decodebytes(m.group("data").encode("utf-8"))
+            self.data = base64.b64decode(m.group("data").encode("utf-8"))
 
         else:
             # Check if we have an external scheme
@@ -560,7 +603,7 @@ class pisaFileObject:
             else:
                 urlParts = urlparse.urlparse(uri)
 
-            log.debug("URLParts: %r", urlParts)
+            log.debug("URLParts: {}".format((urlParts, urlParts.scheme)))
 
             if urlParts.scheme == 'file':
                 if basepath and uri.startswith('/'):
@@ -575,15 +618,19 @@ class pisaFileObject:
             # for things like http:
             elif urlParts.scheme in ('http', 'https'):
 
+                log.debug("Sending request for {} with httplib".format(uri))
+
                 # External data
                 if basepath:
                     uri = urlparse.urljoin(basepath, uri)
+
+                log.debug("Uri parsed: {}".format(uri))
 
                 #path = urlparse.urlsplit(url)[2]
                 #mimetype = getMimeType(path)
 
                 # Using HTTPLIB
-                server, path = urllib.splithost(uri[uri.find("//"):])
+                server, path = urllib2.splithost(uri[uri.find("//"):])
                 if uri.startswith("https://"):
                     conn = httplib.HTTPSConnection(server)
                 else:
@@ -595,24 +642,21 @@ class pisaFileObject:
                     self.mimetype = r1.getheader(
                         "Content-Type", '').split(";")[0]
                     self.uri = uri
+                    log.debug("here")
                     if r1.getheader("content-encoding") == "gzip":
                         import gzip
-                        try:
-                            import cStringIO as io
-                        except:
-                            try:
-                                import StringIO as io
-                            except ImportError:
-                                import io
 
                         self.file = gzip.GzipFile(
-                            mode="rb", fileobj=io.StringIO(r1.read()))
+                            mode="rb", fileobj=six.StringIO(r1.read()))
                     else:
                         self.file = r1
                 else:
+                    log.debug(
+                        "Received non-200 status: {}".format((r1.status, r1.reason)))
                     try:
                         urlResponse = urllib2.urlopen(uri)
-                    except urllib2.HTTPError:
+                    except urllib2.HTTPError as e:
+                        log.error("Could not process uri: {}".format(e))
                         return
                     self.mimetype = urlResponse.info().get(
                         "Content-Type", '').split(";")[0]
@@ -621,6 +665,8 @@ class pisaFileObject:
 
             else:
 
+                log.debug("Unrecognized scheme, assuming local file path")
+
                 # Local data
                 if basepath:
                     uri = os.path.normpath(os.path.join(basepath, uri))
@@ -628,8 +674,13 @@ class pisaFileObject:
                 if os.path.isfile(uri):
                     self.uri = uri
                     self.local = uri
+
                     self.setMimeTypeByName(uri)
-                    self.file = open(uri, "rb")
+                    if self.mimetype and self.mimetype.startswith('text'):
+                        self.file = open(uri, "r") #removed bytes... lets hope it goes ok :/
+                    else:
+                        # removed bytes... lets hope it goes ok :/
+                        self.file = open(uri, "rb")
 
     def getFile(self):
         if self.file is not None:
@@ -656,7 +707,14 @@ class pisaFileObject:
         if self.data is not None:
             return self.data
         if self.file is not None:
-            self.data = self.file.read()
+            try:
+                self.data = self.file.read()
+            except:
+                if self.mimetype and self.mimetype.startswith('text'):
+                    self.file = open(self.file.name, "rb") #removed bytes... lets hope it goes ok :/
+                    self.data = self.file.read().decode('utf-8')
+                else:
+                    raise
             return self.data
         return None
 
@@ -671,13 +729,10 @@ class pisaFileObject:
 
 
 def getFile(*a, **kw):
-    try:
-        file = pisaFileObject(*a, **kw)
-        if file.notFound():
-            return None
-        return file
-    except:
+    file = pisaFileObject(*a, **kw)
+    if file.notFound():
         return None
+    return file
 
 
 COLOR_BY_NAME = {

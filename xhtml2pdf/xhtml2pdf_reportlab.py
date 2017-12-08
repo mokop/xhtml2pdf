@@ -27,15 +27,8 @@ from reportlab.platypus.tables import Table, TableStyle
 from xhtml2pdf.reportlab_paragraph import Paragraph
 from xhtml2pdf.util import getUID, getBorderStyle
 
+import six
 import sys
-
-try:
-    import StringIO
-except Exception:
-    from io import StringIO
-    StringIO_old = StringIO
-    class StringIO(object):
-        StringIO = StringIO_old
 
 import cgi
 import copy
@@ -53,6 +46,7 @@ except:
 log = logging.getLogger("xhtml2pdf")
 
 MAX_IMAGE_RATIO = 0.95
+PRODUCER = "xhtml2pdf <https://github.com/xhtml2pdf/xhtml2pdf/>"
 
 
 class PTCycle(list):
@@ -100,10 +94,7 @@ class PmlBaseDoc(BaseDocTemplate):
     """
 
     def beforePage(self):
-
-        # Tricky way to set producer, because of not real privateness in Python
-        info = "pisa HTML to PDF <http://www.htmltopdf.org>"
-        self.canv._doc.info.producer = info
+        self.canv._doc.info.producer = PRODUCER
 
         '''
         # Convert to ASCII because there is a Bug in Reportlab not
@@ -142,7 +133,7 @@ class PmlBaseDoc(BaseDocTemplate):
             pt = [pt + '_left', pt + '_right']
 
         '''On endPage change to the page template with name or index pt'''
-        if type(pt) is str:
+        if isinstance(pt, str):
             if hasattr(self, '_nextPageTemplateCycle'):
                 del self._nextPageTemplateCycle
             for t in self.pageTemplates:
@@ -150,11 +141,11 @@ class PmlBaseDoc(BaseDocTemplate):
                     self._nextPageTemplateIndex = self.pageTemplates.index(t)
                     return
             raise ValueError("can't find template('%s')" % pt)
-        elif type(pt) is int:
+        elif isinstance(pt, int):
             if hasattr(self, '_nextPageTemplateCycle'):
                 del self._nextPageTemplateCycle
             self._nextPageTemplateIndex = pt
-        elif type(pt) in (list, tuple):
+        elif isinstance(pt, (list, tuple)):
             #used for alternating left/right pages
             #collect the refs to the template objects, complain if any are bad
             c = PTCycle()
@@ -234,7 +225,7 @@ class PmlPageTemplate(PageTemplate):
                 if self.pisaBackground.mimetype.startswith("image/"):
 
                     try:
-                        self.img = PmlImageReader(StringIO.StringIO(self.pisaBackground.getData()))
+                        self.img = PmlImageReader(six.StringIO(self.pisaBackground.getData()))
                         iw, ih = self.img.getSize()
                         pw, self.ph = canvas._pagesize
 
@@ -329,8 +320,9 @@ class PmlImageReader(object):  # TODO We need a factory here, returning either a
         else:
             try:
                 self.fp = open_for_read(fileName, 'b')
-                if isinstance(self.fp, StringIO.StringIO().__class__):
-                    imageReaderFlags = 0  # avoid messing with already internal files
+                if isinstance(self.fp, six.BytesIO().__class__):
+                    # avoid messing with already internal files
+                    imageReaderFlags = 0
                 if imageReaderFlags > 0:  # interning
                     data = self.fp.read()
                     if imageReaderFlags & 2:  # autoclose
@@ -345,7 +337,7 @@ class PmlImageReader(object):  # TODO We need a factory here, returning either a
 
                         data = self._cache.setdefault(md5(data).digest(), data)
                     self.fp = getStringIO(data)
-                elif imageReaderFlags == - 1 and isinstance(fileName, (str, unicode)):
+                elif imageReaderFlags == - 1 and isinstance(fileName, six.text_type):
                     #try Ralf Schmitt's re-opening technique of avoiding too many open files
                     self.fp.close()
                     del self.fp  # will become a property in the next statement
@@ -511,7 +503,7 @@ class PmlImage(Flowable, PmlMaxHeightMixIn):
         return self.dWidth, self.dHeight
 
     def getImage(self):
-        img = PmlImageReader(StringIO.StringIO(self._imgdata))
+        img = PmlImageReader(six.BytesIO(self._imgdata))
         return img
 
     def draw(self):
@@ -877,13 +869,14 @@ class PmlLeftPageBreak(CondPageBreak):
 
 
 class PmlInput(Flowable):
-    def __init__(self, name, type="text", width=10, height=10, default="", options=[]):
+    def __init__(self, name, type="text", width=10, height=10, default="",
+                 options=None):
         self.width = width
         self.height = height
         self.type = type
         self.name = name
         self.default = default
-        self.options = options
+        self.options = options if options is not None else []
 
     def wrap(self, *args):
         return self.width, self.height

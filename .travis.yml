@@ -2,16 +2,12 @@ language: python
 sudo: false
 python:
   - "2.7"
-  - "3.3"
   - "3.4"
   - "3.5"
-  - "pypy"
+  - "3.6"
+#  - "pypy"
 
 env:
-  - RL=24
-  - RL=25
-  - RL=26
-  - RL=27
   - RL=30
   - RL=31
   - RL=32
@@ -21,10 +17,13 @@ matrix:
 
 install:
   - TOX_ENV=py${TRAVIS_PYTHON_VERSION}-rl${RL}
-  - pip install tox coveralls
+  - pip install tox coveralls Sphinx sphinx-rtd-theme
 
 script: tox -e $TOX_ENV
 after_success: coveralls $COVERALLS_OPTION
 
 notifications:
   irc: "chat.freenode.net#xhtml2pdf"
+
+before_script:
+  - cd doc/source ; sphinx-build -nW -b html -d _build/doctrees . _build/html ; cd ../..
