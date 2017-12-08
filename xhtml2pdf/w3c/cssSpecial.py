@@ -37,7 +37,11 @@ Helper for complex CSS definitons like font, margin, padding and border
 Optimized for use with PISA
 """
 
-import types
+#support python 3
+#import types
+TupleType = tuple
+ListType = list
+
 import logging
 
 
@@ -45,7 +49,7 @@ log = logging.getLogger("ho.css")
 
 
 def toList(value):
-    if type(value) != types.ListType:
+    if type(value) != ListType:
         return [value]
     return value
 
@@ -156,7 +160,7 @@ def getNextPart(parts):
 
 
 def isSize(value):
-    return value and ((type(value) is types.TupleType) or value == "0")
+    return value and ((type(value) is TupleType) or value == "0")
 
 
 def splitBorder(parts):
@@ -167,8 +171,6 @@ def splitBorder(parts):
     """
 
     width = style = color = None
-    copy_parts = parts[:]
-    # part = getNextPart(parts)
 
     if len(parts) > 3:
         log.warn("To many elements for border style %r", parts)
@@ -177,12 +179,10 @@ def splitBorder(parts):
         # Width
         if isSize(part):
             width = part
-            # part = getNextPart(parts)
 
         # Style
         elif hasattr(part, 'lower') and part.lower() in _borderStyleTable:
             style = part
-            # part = getNextPart(parts)
 
         # Color
         else:
@@ -210,7 +210,6 @@ def parseSpecialRules(declarations, debug=0):
         # FONT
         if name == "font":
             # [ [ <'font-style'> || <'font-variant'> || <'font-weight'> ]? <'font-size'> [ / <'line-height'> ]? <'font-family'> ] | inherit
-            ddlen = len(dd)
             part = getNextPart(parts)
             # Style
             if part and part in _styleTable:
@@ -250,7 +249,7 @@ def parseSpecialRules(declarations, debug=0):
 
             if 0:
                 part = getNextPart(parts) or oparts
-                print "~", part, parts, oparts, declarations
+                print ("~", part, parts, oparts, declarations)
                 # Color
                 if part and (not part.startswith("url")):
                     dd.append(("background-color", part, last))
@@ -414,8 +413,8 @@ def parseSpecialRules(declarations, debug=0):
         log.debug("CSS special OUT:\n%s", "\n".join([repr(d) for d in dd]))
 
     if 0: #declarations!=dd:
-        print "###", declarations
-        print "#->", dd
+        print ("###", declarations)
+        print ("#->", dd)
         # CSS MODIFY! END
     return dd
 

@@ -1,21 +1,66 @@
 *********
-xhtml2pdf
+XHTML2PDF
 *********
 
-THIS PROJECT WAS INHERITED BY NECESSITY - PLEASE DO NOT CONTACT ME DIRECTLY
-FOR HELP BUT USE THE MAILING LIST INSTEAD.
 
-I picked up the code because I needed to patch it, and nobody was around to 
-merge my pull requests in. So now 
-I can merge pull requests in, but I did not write the code.
+.. image:: https://travis-ci.org/xhtml2pdf/xhtml2pdf.svg
+    :target: https://travis-ci.org/xhtml2pdf/xhtml2pdf
 
-If you think you can do a better job maintaing this project, feel free to let me know
-and I'll give you commit rights (or ownership, or whatever).
+.. image:: https://ci.appveyor.com/api/projects/status/y2mj843lpptwars9/branch/master?svg=true
+    :target: https://ci.appveyor.com/project/LegoStormtroopr/xhtml2pdf/branch/master
 
-Thanks!
+.. image:: https://coveralls.io/repos/xhtml2pdf/xhtml2pdf/badge.svg?branch=develop&service=github
+        :target: https://coveralls.io/github/xhtml2pdf/xhtml2pdf?branch=develop
+        :alt: Coveralls
+
+.. image:: https://badge.fury.io/py/xhtml2pdf.svg
+   :target: https://pypi.python.org/pypi/xhtml2pdf
+
+.. image:: https://readthedocs.org/projects/xhtml2pdf/badge/?version=latest
+   :target: http://xhtml2pdf.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
+The current release of xhtml2pdf is xhtml2pdf **0.2b1** which is a beta that has
+Python 3 support. As with all open-source software, its use in production depends
+on many factors, so be aware that you may find issues in some cases.
+**Big thanks** to everyone
+who has worked on this project so far and to those who help maintain it.
+
+--------------------------------------------------------------------------------
+
+What else can you use instead?
+==============================
+
+Go use WeasyPrint, the codebase is pretty, it has a different features, and it
+does a lot of what xhtml2pdf does and it is easier to use in many circumstances.
+
+`WeasyPrint <http://weasyprint.org/>`__
 
 
-HTML/CSS to PDF converter based on Python
+Documentation?
+==============
+
+xhtml2pdf has some documentation, and we could use your help improving it.
+A good place to start is ``doc/usage.rst``.
+
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+
+This project is community-led! To strengthen it, please hang out on IRC #xhtml2pdf (Freenode)
+or join `our maling list <http://groups.google.com/group/xhtml2pdf>`__.
+
+
+Call for testing
+================
+
+This project is heavily dependent on getting its test coverage up!
+Currently, Python 3 support is being worked on and many refactors and suggestions are potentially coming in.
+Furthermore, parts of the codebase could do well with cleanups and refactoring.
+
+If you benefit from xhtml2pdf, perhaps `look at the test coverage <https://coveralls.io/github/xhtml2pdf/xhtml2pdf?branch=master>`__ and identify parts that are yet untouched.
+
 
 About
 =====
@@ -28,24 +73,34 @@ The main benefit of this tool that a user with Web skills like HTML and CSS
 is able to generate PDF templates very quickly without learning new
 technologies.
 
+
+Installation
+============
+
+This is a typical Python library and is installed using pip::
+
+    pip install xhtml2pdf
+
+To obtain the latest experimental version that has **Python 3 support**, please
+use a prerelease::
+
+    pip install --pre xhtml2pdf
+
+
+
 Requirements
 ============
 
-#. `Reportlab Toolkit 2.2+ <http://www.reportlab.org/>`_
-#. `html5lib 0.11.1+ <http://code.google.com/p/html5lib/>`_
-#. `PyPDF2 1.19+ (optional) <https://pypi.python.org/pypi/PyPDF2>`_
+Python 2.7+. Only Python 3.4+ is tested and guaranteed to work.
 
-   All requirements are listed in ``requirements.txt`` file.
+All additional requirements are listed in ``requirements.txt`` file and are
+installed automatically using the ``pip install xhtml2pdf`` method.
+
 
 Development environment
 =======================
 
-Python, virtualenv and dependencies
------------------------------------
-
-#. Install Python 2.6.x or 2.7.x. Installation steps depends on your operating system.
-
-#. Install Pip, the python package installer::
+#. If you don't have it, install ``pip``, the python package installer::
 
     sudo easy_install pip
 
@@ -85,21 +140,13 @@ Python, virtualenv and dependencies
 
     OK
 
+
 Python integration
 ==================
 
 Some simple demos of how to integrate xhtml2pdf into
 a Python program may be found here: test/simple.py
 
-Contributing
-============
-
-Development for this software happend on github, and the main fork is
-currently at https://github.com/chrisglass/xhtml2pdf
-
-Contributions are welcome in any format, but using github's pull request
-system is very highly preferred since it makes review and integration
-much easier.
 
 Running tests
 =============
@@ -115,6 +162,7 @@ Two different test suites are available to assert xhtml2pdf works reliably:
 #. Functional tests. Thanks to mawe42's super cool work, a full functional
    test suite lives in testrender/.
 
+
 Contact
 =======
 
@@ -122,7 +170,20 @@ Contact
 * Mailing list: xhtml2pdf@googlegroups.com
 * Google group: http://groups.google.com/group/xhtml2pdf
 
-Maintainer: Chris Glass <tribaal@gmail.com>
+
+History
+=======
+
+This are the major milestones and the maintainers of the project:
+
+* 2000-2007, commercial project, spirito.de, written by Dirk Holtwich
+* 2007-2010 Dirk Holtwich (project named "Pisa", project released as GPL)
+* 2010-2012 Dirk Holtwick (project named "xhtml2pdf", changed license to Apache)
+* 2012-2015 Chris Glass (@chrisglass)
+* 2015-2016 Benjamin Bach (@benjaoming)
+* 2016-Current Sam Spencer (@LegoStormtroopr)
+
+For more history, see the CHANGELOG.
 
 License
 =======

@@ -3,7 +3,21 @@
 # see license.txt for license details
 # history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/paragraph.py
 # Modifications by Dirk Holtwick, 2008
-from string import join, whitespace
+
+from __future__ import unicode_literals
+import re
+import six
+import sys
+
+
+basestring = six.text_type
+unicode = six.text_type #python 3
+str = six.text_type
+###############################################################
+###############################################################
+###############################################################
+
+from string import whitespace
 from operator import truth
 from reportlab.pdfbase.pdfmetrics import stringWidth, getAscentDescent
 from reportlab.platypus.paraparser import ParaParser
@@ -13,7 +27,6 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
 from reportlab.lib.textsplit import ALL_CANNOT_START
 from copy import deepcopy
 from reportlab.lib.abag import ABag
-import re
 
 
 PARAGRAPH_DEBUG = False
@@ -54,9 +67,9 @@ _wsc_re_split = re.compile('[%s]+' % re.escape(''.join((
 
 
 def split(text, delim=None):
-    if type(text) is str:
+    if type(text) is bytes:
         text = text.decode('utf8')
-    if type(delim) is str:
+    if type(delim) is bytes:
         delim = delim.decode('utf8')
     elif delim is None and u'\xa0' in text:
         return [uword.encode('utf8') for uword in _wsc_re_split(text)]
@@ -64,7 +77,7 @@ def split(text, delim=None):
 
 
 def strip(text):
-    if type(text) is str:
+    if type(text) is bytes:
         text = text.decode('utf8')
     return text.strip().encode('utf8')
 
@@ -98,16 +111,16 @@ _parser = ParaParser()
 
 
 def _lineClean(L):
-    return join(filter(truth, split(strip(L))))
+    return b" ".join( filter(truth, split(strip(L))) )
 
 
-def cleanBlockQuotedText(text, joiner=' '):
+
+def cleanBlockQuotedText(text, joiner=b' '):
     """This is an internal utility which takes triple-
     quoted text form within the document and returns
     (hopefully) the paragraph the user intended originally."""
     L = filter(truth, map(_lineClean, split(text, '\n')))
-    return join(L, joiner)
-
+    return joiner.join(L)
 
 def setXPos(tx, dx):
     if dx > 1e-6 or dx < -1e-6:
@@ -116,7 +129,7 @@ def setXPos(tx, dx):
 
 def _leftDrawParaLine(tx, offset, extraspace, words, last=0):
     setXPos(tx, offset)
-    tx._textOut(join(words), 1)
+    tx._textOut(b" ".join(words), 1)
     setXPos(tx, -offset)
     return offset
 
@@ -124,7 +137,7 @@ def _leftDrawParaLine(tx, offset, extraspace, words, last=0):
 def _centerDrawParaLine(tx, offset, extraspace, words, last=0):
     m = offset + 0.5 * extraspace
     setXPos(tx, m)
-    tx._textOut(join(words), 1)
+    tx._textOut(b" ".join(words), 1)
     setXPos(tx, -m)
     return m
 
@@ -132,14 +145,14 @@ def _centerDrawParaLine(tx, offset, extraspace, words, last=0):
 def _rightDrawParaLine(tx, offset, extraspace, words, last=0):
     m = offset + extraspace
     setXPos(tx, m)
-    tx._textOut(join(words), 1)
+    tx._textOut(b" ".join(words), 1)
     setXPos(tx, -m)
     return m
 
 
 def _justifyDrawParaLine(tx, offset, extraspace, words, last=0):
     setXPos(tx, offset)
-    text = join(words)
+    text = b" ".join(words)
     if last:
         #last one, left align
         tx._textOut(text, 1)
@@ -340,7 +353,10 @@ def _putFragLine(cur_x, tx, line):
                     xs.linkColor = xs.textColor
             txtlen = tx._canvas.stringWidth(text, tx._fontname, tx._fontsize)
             cur_x += txtlen
-            nSpaces += text.count(' ')
+            try:
+                nSpaces += text.count(' ')
+            except Exception:
+                nSpaces += text.decode("utf8").count(' ')
     cur_x_s = cur_x + (nSpaces - 1) * ws
 
     # XXX Modified for XHTML2PDF
@@ -423,6 +439,8 @@ def _getFragWords(frags):
     hangingStrip = False
     for f in frags:
         text = f.text
+        if type(text) is bytes:
+            text = text.decode('utf8')
         # of paragraphs
         if text != '':
             if hangingStrip:
@@ -507,8 +525,11 @@ def _split_blParaHard(blPara, start, stop):
                 g = f[i]
                 if not g.text:
                     g.text = ' '
-                elif g.text[-1] != ' ':
-                    g.text += ' '
+                else:
+                    if type(g.text) is bytes:
+                        g.text = g.text.decode('utf8')
+                    if g.text[-1] != ' ':
+                        g.text += ' '
     return f
 
 
@@ -580,12 +601,12 @@ def splitLines0(frags, widths):
     """
 
     #initialise the algorithm
-    lines = []
     lineNum = 0
     maxW = widths[lineNum]
     i = -1
     l = len(frags)
     lim = start = 0
+    text = frags[0]
     while 1:
         #find a non whitespace character
         while i < l:
@@ -633,7 +654,7 @@ def splitLines0(frags, widths):
 
 def _do_under_line(i, t_off, ws, tx, lm=-0.125):
     y = tx.XtraState.cur_y - i * tx.XtraState.style.leading + lm * tx.XtraState.f.fontSize
-    textlen = tx._canvas.stringWidth(join(tx.XtraState.lines[i][1]), tx._fontname, tx._fontsize)
+    textlen = tx._canvas.stringWidth(b" ".join(tx.XtraState.lines[i][1]), tx._fontname, tx._fontsize)
     tx._canvas.line(t_off, y, t_off + textlen + ws, y)
 
 
@@ -641,8 +662,8 @@ _scheme_re = re.compile('^[a-zA-Z][-+a-zA-Z0-9]+$')
 
 
 def _doLink(tx, link, rect):
-    if isinstance(link, unicode):
-        link = link.encode('utf8')
+    if six.PY2:
+        link = six.text_type(link, 'utf8') 
     parts = link.split(':', 1)
     scheme = len(parts) == 2 and parts[0].lower() or ''
     if _scheme_re.match(scheme) and scheme != 'document':
@@ -660,7 +681,7 @@ def _do_link_line(i, t_off, ws, tx):
     xs = tx.XtraState
     leading = xs.style.leading
     y = xs.cur_y - i * leading - xs.f.fontSize / 8.0 # 8.0 factor copied from para.py
-    text = join(xs.lines[i][1])
+    text = b" ".join(xs.lines[i][1])
     textlen = tx._canvas.stringWidth(text, tx._fontname, tx._fontsize)
     _doLink(tx, xs.link, (t_off, y, t_off + textlen + ws, y + leading))
 
@@ -978,11 +999,11 @@ class Paragraph(Flowable):
     def wrap(self, availWidth, availHeight):
 
         if self.debug:
-            print id(self), "wrap"
+            print (id(self), "wrap")
             try:
-                print repr(self.getPlainText()[:80])
+                print (repr(self.getPlainText()[:80]))
             except:
-                print "???"
+                print ("???")
 
         # work out widths array for breaking
         self.width = availWidth
@@ -1044,7 +1065,7 @@ class Paragraph(Flowable):
     def split(self, availWidth, availHeight):
 
         if self.debug:
-            print  id(self), "split"
+            print  (id(self), "split")
 
         if len(self.frags) <= 0: return []
 
@@ -1159,7 +1180,7 @@ class Paragraph(Flowable):
         """
 
         if self.debug:
-            print id(self), "breakLines"
+            print (id(self), "breakLines")
 
         if not isinstance(width, (tuple, list)):
             maxWidths = [width]
@@ -1249,7 +1270,11 @@ class Paragraph(Flowable):
                 endLine = (newWidth > maxWidth and n > 0) or lineBreak
                 if not endLine:
                     if lineBreak: continue      #throw it away
-                    nText = w[1][1]
+                    if type(w[1][1]) != six.text_type:
+                        nText = six.text_type(w[1][1], 'utf-8')
+                    else:
+                        nText = w[1][1]
+                        
                     if nText: n += 1
                     fontSize = f.fontSize
                     if calcBounds:
@@ -1282,12 +1307,20 @@ class Paragraph(Flowable):
                                         wi.text += ' '
                                     break
                             else:
-                                if not g.text.endswith(' '):
-                                    g.text += ' '
+                                if type(g.text) == type(' '):
+                                    space = " "
+                                else:
+                                    space = b" "
+                                if not g.text.endswith(space):
+                                    g.text += space
                         g = f.clone()
                         words.append(g)
                         g.text = nText
                     else:
+                        if type(g.text) is bytes:
+                            g.text = g.text.decode("utf8")
+                        if type(nText) is bytes:
+                            nText = nText.decode("utf8")
                         if nText != '' and nText[0] != ' ':
                             g.text += ' ' + nText
 
@@ -1378,7 +1411,7 @@ class Paragraph(Flowable):
         Cannot handle font variations."""
 
         if self.debug:
-            print id(self), "breakLinesCJK"
+            print (id(self), "breakLinesCJK")
 
         if not isinstance(width, (list, tuple)):
             maxWidths = [width]
@@ -1402,7 +1435,6 @@ class Paragraph(Flowable):
             #preserving splitting algorithm
             return f.clone(kind=0, lines=self.blPara.lines)
         lines = []
-        lineno = 0
 
         self.height = 0
 
@@ -1433,7 +1465,7 @@ class Paragraph(Flowable):
         algorithm will go infinite."""
 
         if self.debug:
-            print id(self), "drawPara", self.blPara.kind
+            print (id(self), "drawPara", self.blPara.kind)
 
         #stash the key facts locally for speed
         canvas = self.canv
@@ -1550,7 +1582,7 @@ class Paragraph(Flowable):
                     if link: _do_link_line(0, dx, ws, tx)
 
                     #now the middle of the paragraph, aligned with the left margin which is our origin.
-                    for i in xrange(1, nLines):
+                    for i in six.moves.range(1, nLines):
                         ws = lines[i][0]
                         t_off = dpl(tx, _offsets[i], ws, lines[i][1], noJustifyLast and i == lim)
                         if dpl != _justifyDrawParaLine: ws = 0
@@ -1558,7 +1590,7 @@ class Paragraph(Flowable):
                         if strike: _do_under_line(i, t_off + leftIndent, ws, tx, lm=0.125)
                         if link: _do_link_line(i, t_off + leftIndent, ws, tx)
                 else:
-                    for i in xrange(1, nLines):
+                    for i in six.moves.range(1, nLines):
                         dpl(tx, _offsets[i], lines[i][0], lines[i][1], noJustifyLast and i == lim)
             else:
                 f = lines[0]
@@ -1566,7 +1598,6 @@ class Paragraph(Flowable):
                 # default?
                 dpl = _leftDrawParaLineX
                 if bulletText:
-                    oo = offset
                     offset = _drawBullet(canvas, offset, cur_y, bulletText, style)
                 if alignment == TA_LEFT:
                     dpl = _leftDrawParaLineX
@@ -1615,7 +1646,7 @@ class Paragraph(Flowable):
                 _do_post_text(tx)
 
                 #now the middle of the paragraph, aligned with the left margin which is our origin.
-                for i in xrange(1, nLines):
+                for i in six.moves.range(1, nLines):
                     f = lines[i]
                     dpl(tx, _offsets[i], f, noJustifyLast and i == lim)
                     _do_post_text(tx)
@@ -1635,7 +1666,7 @@ class Paragraph(Flowable):
             for frag in frags:
                 if hasattr(frag, 'text'):
                     plains.append(frag.text)
-            return join(plains, '')
+            return ''.join(plains)
         elif identify:
             text = getattr(self, 'text', None)
             if text is None: text = repr(self)
@@ -1661,7 +1692,7 @@ class Paragraph(Flowable):
 
 if __name__ == '__main__':    # NORUNTESTS
     def dumpParagraphLines(P):
-        print 'dumpParagraphLines(<Paragraph @ %d>)' % id(P)
+        print ('dumpParagraphLines(<Paragraph @ %d>)') % id(P)
         lines = P.blPara.lines
         for l, line in enumerate(lines):
             line = lines[l]
@@ -1670,10 +1701,10 @@ if __name__ == '__main__':    # NORUNTESTS
             else:
                 words = line[1]
             nwords = len(words)
-            print 'line%d: %d(%s)\n  ' % (l, nwords, str(getattr(line, 'wordCount', 'Unknown'))),
-            for w in xrange(nwords):
-                print "%d:'%s'" % (w, getattr(words[w], 'text', words[w])),
-            print
+            print ('line%d: %d(%s)\n  ') % (l, nwords, str(getattr(line, 'wordCount', 'Unknown'))),
+            for w in six.moves.range(nwords):
+                print ("%d:'%s'") % (w, getattr(words[w], 'text', words[w])),
+            print()
 
     def fragDump(w):
         R = ["'%s'" % w[1]]
@@ -1683,26 +1714,25 @@ if __name__ == '__main__':    # NORUNTESTS
         return ', '.join(R)
 
     def dumpParagraphFrags(P):
-        print 'dumpParagraphFrags(<Paragraph @ %d>) minWidth() = %.2f' % (id(P), P.minWidth())
+        print ('dumpParagraphFrags(<Paragraph @ %d>) minWidth() = %.2f') % (id(P), P.minWidth())
         frags = P.frags
         n = len(frags)
-        for l in xrange(n):
-            print "frag%d: '%s' %s" % (
+        for l in six.moves.range(n):
+            print ("frag%d: '%s' %s") % (
             l, frags[l].text, ' '.join(['%s=%s' % (k, getattr(frags[l], k)) for k in frags[l].__dict__ if k != text]))
 
         l = 0
         cum = 0
         for W in _getFragWords(frags):
             cum += W[0]
-            print "fragword%d: cum=%3d size=%d" % (l, cum, W[0]),
+            print ("fragword%d: cum=%3d size=%d") % (l, cum, W[0]),
             for w in W[1:]:
-                print '(%s)' % fragDump(w),
-            print
+                print ('(%s)') % fragDump(w),
+            print()
             l += 1
 
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    import sys
 
     TESTS = sys.argv[1:]
     if TESTS == []:
@@ -1770,12 +1800,12 @@ umfassend zu sein."""
         P = Paragraph(text, B)
         dumpParagraphFrags(P)
         w, h = P.wrap(aW, aH)
-        print 'After initial wrap', w, h
+        print ('After initial wrap', w, h)
         dumpParagraphLines(P)
         S = P.split(aW, aH)
         dumpParagraphFrags(S[0])
         w0, h0 = S[0].wrap(aW, aH)
-        print 'After split wrap', w0, h0
+        print ('After split wrap', w0, h0)
         dumpParagraphLines(S[0])
 
     if flagged(5):
@@ -1810,7 +1840,7 @@ umfassend zu sein."""
         w, h = P.wrap(6 * 72, 9.7 * 72)
         dumpParagraphLines(P)
         S = P.split(6 * 72, h / 2.0)
-        print len(S)
+        print (len(S))
         dumpParagraphLines(S[0])
         dumpParagraphLines(S[1])
 
