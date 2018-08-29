@@ -136,7 +136,7 @@ def transform_attrs(obj, keys, container, func, extras=None):
     Allows to apply one function to set of keys cheching if key is in container,
     also trasform ccs key to report lab keys.
 
-    extras = Are extra params for func, it will be call like func(*[param1, param2]) 
+    extras = Are extra params for func, it will be call like func(*[param1, param2])
 
     obj = frag
     keys = [(reportlab, css), ... ]
@@ -161,11 +161,10 @@ def transform_attrs(obj, keys, container, func, extras=None):
 def copy_attrs(obj1, obj2, attrs):
     """
     Allows copy a list of attributes from object2 to object1.
-    Useful for copy ccs attributes to fragment  
+    Useful for copy ccs attributes to fragment
     """
     for attr in attrs:
         value = getattr(obj2, attr) if hasattr(obj2, attr) else None
-        print(value)
         if value is None and isinstance(obj2, dict) and attr in obj2:
             value = obj2[attr]
         setattr(obj1, attr, value)
@@ -173,7 +172,7 @@ def copy_attrs(obj1, obj2, attrs):
 
 def set_value(obj, attrs, value, _copy=False):
     """
-    Allows set the same value to a list of attributes 
+    Allows set the same value to a list of attributes
     """
     for attr in attrs:
         if _copy:
