@@ -147,7 +147,7 @@ def pisaDocument(src, dest=None, path=None, link_callback=None, debug=0,
                 ctr = 0
                 # TODO: Why do we loop over the same list again?
                 # see bgouter at line 137
-                for bg in context.pisaBackgroundList:
+                for bg in filter(lambda x: x is not None, context.pisaBackgroundList):
                     page = input1.getPage(ctr)
                     if (
                             bg and not bg.notFound() and
